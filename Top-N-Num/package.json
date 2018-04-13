@@ -1,0 +1,9 @@
+{
+	"name": "top-n-numbers",
+	"version": "0.1.0",
+	"description": "Extract top N numbers from input stream",
+	"main": "index.js",
+	"dependencies": {
+		
+	}
+}
