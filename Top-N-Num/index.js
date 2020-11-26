@@ -7,14 +7,12 @@
 
 // 数据流向：输入流->chunk->fragment->number
 
-
+// Modules
 const fs = require('fs');
 const MinHeap = require('./MinHeap');
-// const Readable = require('stream').Readable;
 
-
+// Constants
 const TOP_N_LIMIT = 100;    // 前N个大数
-
 const MAX_FRAG = 1024 * 1024;
 // const MAX_FRAG = 16;    // Small fragment size, for testing
 
@@ -35,6 +33,7 @@ try {
 			// highWaterMark: 64,     // Small chunk size, for testing
 		})
 	;
+
 
 	var heap = new MinHeap();
 	var residue = '';
@@ -59,12 +58,6 @@ try {
 		console.log(TOP_N_Num.join('\n'));
 	};
 
-	/* var numStream = new Readable();
-	numStream._read = function noop() {};
-	numStream.on('data', data => {
-		console.log(data);
-	}); */
-
 	input
 		.on('data', chunk => {
 			let len = chunk.length;
@@ -74,10 +67,14 @@ try {
 				frag[0] = residue + frag[0];
 				residue = frag.pop();
 				frag.forEach(line => {
-					let num = parseInt(line);
-					if (!isNaN(num)) {
+					let num = parseInt(line, 10);
+					if (isNaN(num)) {
+						// console.log(`Ignoring non-number "${line}"`);
+					} else if (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) {
+						// console.log(`Ignoring overflowed "${line}"`);
+					} else {
 						onNumber(num);
-						//numStream.push(num);
+						// numStream.push(num);
 					}
 				});
 			}

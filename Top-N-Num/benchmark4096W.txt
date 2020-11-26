@@ -1,0 +1,10 @@
+数据量：4096*10000条，sample.txt：711,749,849字节~678MB
+
+命令：node getRand.js Z:\sample.txt
+用时：28.69s
+
+命令：node index.js Z:\sample.txt
+用时：11.17s
+
+命令：node getRand.js | node index.js
+用时：33.35s

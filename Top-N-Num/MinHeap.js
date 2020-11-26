@@ -6,11 +6,6 @@ const HEAD = 1;
 
 var _TRACE = DEBUG ? console.log : () => { };
 
-// 工具函数
-var randArr = function (min, max, n) {
-	return Array(n).fill(0).map(x => Math.floor(Math.random() * (max - min)) + min);
-}
-
 var isValidHeap = function (array) {
 	for (let i = array.length - 1; i > 1; i--) {
 		if (array[i >> 1] > array[i]) {
@@ -51,7 +46,6 @@ class MinHeap {
 	insert(val) {
 		this.array.push(NaN);
 		this.bubbleUp(++this.capacity, val);
-		_TRACE(`cap=${this.capacity}, [${this.array.join(", ")}], ${isValidHeap(this.array)}`);
 	}
 
 	/*
@@ -145,6 +139,12 @@ class MinHeap {
 // 导出模块
 module.exports = MinHeap;
 
+
+// 工具函数
+var randArr = function (min, max, n) {
+	return Array(n).fill(0).map(x => Math.floor(Math.random() * (max - min)) + min);
+}
+
 var assert;
 
 // 测试A：插入、提取测试
@@ -152,7 +152,8 @@ var testA = function () {
 	var heap = new MinHeap();
 	var arr = [7, 5, 3, 9, 8, 2, 6, 4, 1];
 	arr.forEach(x => {
-		heap.insert(x)
+		heap.insert(x);
+		_TRACE(`cap=${heap.capacity}, [${heap.array.join(", ")}], ${isValidHeap(heap.array)}`);
 	});
 
 	var heapExtracted = [];
@@ -176,14 +177,18 @@ var testB = function () {
 	var heap = new MinHeap();
 
 	var rand = randArr(100, 999, 100);
-	_TRACE(`[${rand.join(", ")}]`);
+	_TRACE(`Full array: [${rand.join(", ")}]`);
 
 	// 插入元素[0~10)
-	rand.slice(0, 10).forEach(x => heap.insert(x));
+	rand.slice(0, 10).forEach(x => {
+		heap.insert(x);
+		_TRACE(`cap=${heap.capacity}, [${heap.array.join(", ")}], ${isValidHeap(heap.array)}`);
+	});
 	// 先插入再提取元素[10~N)，堆容量在11,10之间跳动
 	rand.slice(10).forEach(x => {
 		// if (x <= heap.getMin()) return;   // 若x比最小值还小，可以不插入堆
 		heap.insert(x);
+		_TRACE(`cap=${heap.capacity}, [${heap.array.join(", ")}], ${isValidHeap(heap.array)}`);
 		heap.extractMin();
 		_TRACE(`cap=${heap.capacity}, [${heap.array.join(", ")}]`);
 	});
