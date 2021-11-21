@@ -1,14 +1,9 @@
 "use strict"
 
 // TODO: memory cost and performace test
-// TODO: stream style or event style
-// TODO: flush stream after SIGINT
 
-
-// 数据流向：输入流->chunk->fragment->number
-
-// Modules
 const fs = require('fs');
+const { Transform } = require('stream');
 const MinHeap = require('./MinHeap');
 
 // Constants
@@ -16,11 +11,46 @@ const TOP_N_LIMIT = 100;    // 前N个大数
 const MAX_FRAG = 1024 * 1024;
 // const MAX_FRAG = 16;    // Small fragment size, for testing
 
+const filepath = process.argv[2];
 
-var filepath = process.argv[2];
+
+/**
+ * 将文本字节流分割解析为数字流
+ * @see https://strongloop.com/strongblog/practical-examples-of-the-new-node-js-streams-api/
+ */
+ class NumberStream extends Transform {
+	constructor() {
+		super({ objectMode: true });
+		this.remainData = null;
+	}
+	writeNum(line) {
+		let num = parseInt(line, 10);
+		if (isNaN(num)) {
+			console.log(`[Warning] Ignoring non-number "${line}"`);
+		} else if (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) {
+			console.log(`[Warning] Ignoring overflowed "${line}"`);
+		} else {
+			this.push(num);
+		}
+	}
+	_transform(chunk, encoding, done) {
+		let data = chunk.toString('utf-8');
+		if (this.remainData)
+			data = this.remainData + data;
+		let lines = data.split('\n');
+		this.remainData = lines.pop();
+		lines.map(line => this.writeNum(line));
+		done();
+	}
+	_flush(done) {
+		if (this.remainData) this.writeNum(this.remainData);
+		this.remainData = null;
+		done();
+	}
+}
 
 
-var input;
+let input;
 // 若定义filepath，则默认stdin为输入流
 try {
 	input = (filepath === undefined) ?
@@ -34,12 +64,10 @@ try {
 		})
 	;
 
+	const heap = new MinHeap();
+	let count = 0;
 
-	var heap = new MinHeap();
-	var residue = '';
-	var count = 0;
-
-	var onNumber = function(x) {
+	function onNumber(x) {
 		if (count < TOP_N_LIMIT) {
 			heap.insert(x);
 			count++;
@@ -50,7 +78,7 @@ try {
 		}
 	}
 
-	var onEnd = function() {
+	function onEnd() {
 		let TOP_N_Num = heap.toArray().sort((a, b) => {
 			return (a < b) - (a > b);
 		});
@@ -58,31 +86,11 @@ try {
 		console.log(TOP_N_Num.join('\n'));
 	};
 
-	input
-		.on('data', chunk => {
-			let len = chunk.length;
-			for (let i = 0; i < len; ) {
-				let frag = chunk.slice(i, i += MAX_FRAG);
-				frag = frag.toString('utf8').split('\n');
-				frag[0] = residue + frag[0];
-				residue = frag.pop();
-				frag.forEach(line => {
-					let num = parseInt(line, 10);
-					if (isNaN(num)) {
-						// console.log(`Ignoring non-number "${line}"`);
-					} else if (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) {
-						// console.log(`Ignoring overflowed "${line}"`);
-					} else {
-						onNumber(num);
-						// numStream.push(num);
-					}
-				});
-			}
-		})
-		.on('end', () => {
-			onEnd();
-		});
-	
+	const numberStream = new NumberStream();
+	input.pipe(numberStream);
+	numberStream.on('data', onNumber)
+	numberStream.on('end', onEnd)
+
 	// Handle Ctrl+C
 	process.on('SIGINT', () => {
 		// input.end();
